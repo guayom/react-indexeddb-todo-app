@@ -8,7 +8,7 @@ import { openDb } from "idb";
 import { DragDropContext } from 'react-beautiful-dnd';
 
 const originalShowOnlyIncomplete =
-  JSON.parse(localStorage.getItem("__showOnlyIncomplete")) || false;
+  typeof window !== 'undefined' ? JSON.parse(localStorage.getItem("__showOnlyIncomplete")) || false : false;
 
 const dbPromise = openDb("TASKS-DB", 1, upgradeDB => {
   upgradeDB.createObjectStore("tasks", {
