@@ -5,6 +5,7 @@ import NewTask from "../components/new-task";
 import NoTasks from "../components/no-tasks";
 import ToggleCompleted from "../components/toggle-completed";
 import { openDb } from "idb";
+import { DragDropContext } from 'react-beautiful-dnd';
 
 const originalShowOnlyIncomplete =
   JSON.parse(localStorage.getItem("__showOnlyIncomplete")) || false;
@@ -16,11 +17,29 @@ const dbPromise = openDb("TASKS-DB", 1, upgradeDB => {
   });
 });
 
+// a little function to help us with reordering the result
+const reorder = (list, startIndex, endIndex) => {
+  const result = Array.from(list);
+  const [removed] = result.splice(startIndex, 1);
+  result.splice(endIndex, 0, removed);
+
+  console.log({result});
+  const ordered = result.map((t, i) => ({ ...t, order: i + 1 }))
+  console.log({ ordered });
+
+  return ordered;
+};
+
 class IndexPage extends React.Component {
-  state = {
-    showOnlyIncomplete: originalShowOnlyIncomplete,
-    tasks: []
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      showOnlyIncomplete: originalShowOnlyIncomplete,
+      tasks: []
+    };
+    this.onDragEnd = this.onDragEnd.bind(this);
+  }
+  
 
   deleteTask = e => {
     const id = Math.trunc(e.target.value);
@@ -43,6 +62,7 @@ class IndexPage extends React.Component {
         const tx = db.transaction("tasks", "readwrite");
         tx.objectStore("tasks").put({
           title: taskTitle,
+          order: this.state.tasks.length + 1,
           done: false
         });
         return tx.complete;
@@ -107,12 +127,33 @@ class IndexPage extends React.Component {
           .objectStore("tasks")
           .getAll();
       })
-      .then(tasks => this.setState({ tasks }));
+      .then(tasks => this.setState({
+        tasks: tasks.sort(function (a, b) {
+          return a.order - b.order;
+        }) }));
   };
 
   componentDidMount = () => {
     this.getTasksToState();
   };
+
+  onDragEnd(result) {
+
+    // dropped outside the list
+    if (!result.destination) {
+      return;
+    }
+
+    const items = reorder(
+      this.state.tasks,
+      result.source.index,
+      result.destination.index
+    );
+
+    items.map(item => this.updateTask(item))
+
+    this.setState({ tasks: items })
+  }
 
   render() {
     const { tasks, showOnlyIncomplete } = this.state;
@@ -121,13 +162,16 @@ class IndexPage extends React.Component {
         <div className="App">
           <NewTask addTask={e => this.addTask(e)} />
           {tasks.length > 0 ? (
-            <TaskList
-              tasks={tasks}
-              deleteTask={this.deleteTask}
-              changeStatus={this.changeStatus}
-              showOnlyIncomplete={showOnlyIncomplete}
-              editTask={e => this.editTask(e)}
-            />
+            <DragDropContext onDragEnd={this.onDragEnd}>
+              <TaskList
+                tasks={tasks}
+                deleteTask={this.deleteTask}
+                changeStatus={this.changeStatus}
+                showOnlyIncomplete={showOnlyIncomplete}
+                editTask={e => this.editTask(e)}
+                setTasks={newTasks => this.setState({ tasks: newTasks })}
+              />
+            </DragDropContext>
           ) : (
             <NoTasks />
           )}

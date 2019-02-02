@@ -1,6 +1,7 @@
-import React from "react";
+import React, { Component } from "react";
 import styled from "styled-components";
 import ContentEditable from "react-contenteditable";
+import { Droppable, Draggable } from 'react-beautiful-dnd';
 
 const Container = styled.ul`
   flex: 1;
@@ -35,43 +36,60 @@ const Options = styled.div`
   }
 `;
 
-export default ({
-  tasks,
-  deleteTask,
-  changeStatus,
-  showOnlyIncomplete,
-  editTask
-}) => {
-  return (
-    <Container>
-      {tasks.map(task => (
-        <Item
-          key={task.id}
-          done={task.done}
-          show={showOnlyIncomplete && task.done ? false : true}
-        >
-          <input
-            type="checkbox"
-            name="markCompleted"
-            checked={task.done}
-            data-id={task.id}
-            onChange={changeStatus}
-          />
-          <ItemTitle>
-            <ContentEditable
-              html={task.title}
-              id={task.id}
-              onChange={e => editTask(e)}
-              disabled={task.done}
-            />
-          </ItemTitle>
-          <Options>
-            <button onClick={deleteTask} value={task.id}>
-              Delete
-            </button>
-          </Options>
-        </Item>
-      ))}
-    </Container>
-  );
-};
+class TasksList extends Component {
+  render () {
+    const {
+      tasks,
+      deleteTask,
+      changeStatus,
+      showOnlyIncomplete,
+      editTask
+    } = this.props
+    return (
+      
+        <Droppable droppableId="droppable">
+          {(provided, snapshot) => {
+            return (
+            <Container ref={provided.innerRef}>
+              {tasks.map((task, index) => (
+              <Draggable key={task.id} draggableId={task.id} index={index}>
+                {(provided, snapshot) => (
+                  <Item
+                    ref={provided.innerRef}
+                    done={task.done}
+                    show={showOnlyIncomplete && task.done ? false : true}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                  >
+                    <input
+                      type="checkbox"
+                      name="markCompleted"
+                      checked={task.done}
+                      data-id={task.id}
+                      onChange={changeStatus}
+                    />
+                    <ItemTitle>
+                      <ContentEditable
+                        html={task.title}
+                        id={task.id}
+                        onChange={e => editTask(e)}
+                        disabled={task.done}
+                      />
+                    </ItemTitle>
+                    <Options>
+                      <button onClick={deleteTask} value={task.id}>
+                        Delete
+                      </button>
+                    </Options>
+                  </Item>
+                )}
+              </Draggable>
+            ))}
+          </Container>
+    )}}
+        </Droppable>
+    );
+  }
+}
+
+export default TasksList
